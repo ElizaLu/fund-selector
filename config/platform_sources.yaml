@@ -1,0 +1,9 @@
+platforms:
+  - name: 天天基金
+    url: "https://fund.eastmoney.com/feilv.html"
+
+  - name: 同花顺爱基金
+    url: "https://fund.10jqka.com.cn/data/open_fee.shtml"
+
+  - name: 好买基金
+    url: "https://www.howbuy.com/fundtool/comparefund.htm?fundId=246039"

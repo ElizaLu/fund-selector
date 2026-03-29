@@ -1,0 +1,19 @@
+universe:
+  include_types: ["股票型", "混合型", "债券型", "指数型", "FOF"]
+  min_history_days: 252
+
+scoring:
+  weights:
+    cagr: 0.30
+    sharpe: 0.25
+    max_drawdown: 0.20
+    rating: 0.10
+    expense: 0.10
+    consistency: 0.05
+
+holding:
+  days: 730
+  amount_yuan: 5000
+
+platforms_csv: data/platform_offers.csv
+output_csv: outputs/ranked_funds.csv
