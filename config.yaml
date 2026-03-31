@@ -1,5 +1,4 @@
 universe:
-  include_types: ["股票型", "混合型", "债券型", "指数型", "FOF"]
   min_history_days: 252
 
 scoring:

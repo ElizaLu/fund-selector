@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import re
 import numpy as np
 import pandas as pd
+import traceback
 
-from .data import fetch_fee_table, fetch_nav_history, fetch_overview, pct_to_float
+from .data import fetch_nav_history, fetch_overview, pct_to_float
 from .metrics import (
     annualized_return,
     annualized_volatility,
@@ -13,15 +15,8 @@ from .metrics import (
     sharpe_ratio,
     to_returns,
 )
-
-
-def screen_universe(df: pd.DataFrame, include_types: list[str], top_n: int = 200) -> pd.DataFrame:
+def screen_universe(df: pd.DataFrame, top_n: int = 200) -> pd.DataFrame:
     x = df.copy()
-    if "类型" in x.columns and include_types:
-        mask = False
-        for t in include_types:
-            mask = mask | x["类型"].astype(str).str.contains(t, na=False)
-        x = x[mask].copy()
 
     if "5星评级家数" in x.columns:
         x["5星评级家数"] = pd.to_numeric(x["5星评级家数"], errors="coerce").fillna(0)
@@ -52,13 +47,50 @@ def parse_overview_row(ov: pd.DataFrame) -> dict:
         "tracking": row.get("跟踪标的"),
     }
 
+def sum_valid(values):
+    valid = []
+    for v in values:
+        if v is None:
+            continue
+        try:
+            if np.isnan(v):
+                continue
+        except Exception:
+            continue
+        valid.append(float(v))
+    return sum(valid) if valid else np.nan
+
+
+import re
+import numpy as np
+
+def extract_effective_fee(text):
+    if text is None:
+        return np.nan
+
+    text = str(text)
+
+    # 1️⃣ 优先找“优惠费率”
+    match_discount = re.search(r"优惠费率[:：]?\s*([0-9.]+)%", text)
+    if match_discount:
+        return float(match_discount.group(1)) / 100
+
+    # 2️⃣ 没有优惠 → 找第一个百分比（通常就是原始费率）
+    match_normal = re.search(r"([0-9.]+)%", text)
+    if match_normal:
+        return float(match_normal.group(1)) / 100
+
+    return np.nan
 
 def build_one_record(code: str, amount_yuan: float = 100000, min_history_days: int = 252) -> dict | None:
     try:
         ov = fetch_overview(code)
         nav = fetch_nav_history(code)
-        fee = fetch_fee_table(code, indicator="申购费率（前端）")
-    except Exception:
+        fee = extract_effective_fee(ov.get("最高认购费率", None))
+        # print("最高认购费率:", ov.get("最高认购费率", None))
+    except Exception as e:
+        print("发生错误：", e)
+        traceback.print_exc()
         return None
 
     if nav is None or nav.empty or len(nav) < min_history_days:
@@ -70,11 +102,13 @@ def build_one_record(code: str, amount_yuan: float = 100000, min_history_days: i
 
     info = parse_overview_row(ov)
 
-    # 尽量把“运作成本”拆开
-    annual_cost = sum(
-        x for x in [info["management_fee"], info["custody_fee"], info["sales_fee"]]
-        if x is not None and not np.isnan(x)
-    ) if any(v is not None and not np.isnan(v) for v in [info["management_fee"], info["custody_fee"], info["sales_fee"]]) else np.nan
+    annual_cost = sum_valid([
+        info["management_fee"],
+        info["custody_fee"],
+        info["sales_fee"],
+    ])
+
+    front_fee = fee * amount_yuan
 
     record = {
         **info,
@@ -85,19 +119,28 @@ def build_one_record(code: str, amount_yuan: float = 100000, min_history_days: i
         "sharpe": sharpe_ratio(ret),
         "monthly_win_rate": monthly_win_rate(nav_series),
         "annual_cost": annual_cost,
-        "front_fee_table_rows": len(fee) if fee is not None else 0,
+        "front_fee": front_fee,
     }
     return record
 
-
-def rank_funds(records: list[dict], weights: dict) -> pd.DataFrame:
+def rank_funds(records: list[dict], weights: dict, amount_yuan: float, holding_days: int) -> pd.DataFrame:
     df = pd.DataFrame([r for r in records if r is not None]).copy()
     if df.empty:
         return df
 
-    # 费用越低越好，所以单独反向处理
-    df["expense_proxy"] = df["annual_cost"].copy()
-    df.loc[df["expense_proxy"].isna(), "expense_proxy"] = df["front_fee_max"]
+    holding_years = holding_days / 365.25
+
+    df["front_fee"] = pd.to_numeric(df["front_fee"], errors="coerce")
+    df["annual_cost"] = pd.to_numeric(df["annual_cost"], errors="coerce")
+
+    # 用于打分的成本代理：买入一次性成本 + 持有期间持续成本
+    front_median = df["front_fee"].median(skipna=True)
+    annual_median = df["annual_cost"].median(skipna=True)
+
+    df["expense_proxy"] = (
+        df["front_fee"].fillna(front_median) +
+        df["annual_cost"].fillna(annual_median) * amount_yuan * holding_years
+    )
 
     df["score"] = 0.0
     df["score"] += weights["cagr"] * normalize_rank(df, "cagr", ascending=False)
@@ -107,5 +150,4 @@ def rank_funds(records: list[dict], weights: dict) -> pd.DataFrame:
     df["score"] += weights["expense"] * normalize_rank(df, "expense_proxy", ascending=True)
     df["score"] += weights["consistency"] * normalize_rank(df, "monthly_win_rate", ascending=False)
 
-    out = df.sort_values("score", ascending=False).reset_index(drop=True)
-    return out
+    return df.sort_values("score", ascending=False).reset_index(drop=True)

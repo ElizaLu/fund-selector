@@ -16,7 +16,7 @@ HEADERS = {
 } # 模拟浏览器访问，否则很多网站会拒绝请求
 
 
-def fetch_text(url: str) -> str:
+def fetch_text(url: str) -> str: # 将txt分成字段
     r = requests.get(url, headers=HEADERS, timeout=30)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "lxml")

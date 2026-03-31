@@ -57,7 +57,8 @@ def fetch_universe() -> pd.DataFrame:
 def fetch_overview(code: str) -> pd.DataFrame:
     _pause()
     return ak.fund_overview_em(symbol=code).copy() # 因为有时返回的是view，通过代码code查询
-
+    # 返回的是一行dataframe
+    
 
 def fetch_nav_history(code: str) -> pd.DataFrame:
     _pause()
