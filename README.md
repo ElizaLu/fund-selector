@@ -1,51 +1,35 @@
 # Fund Selector
 
-A research-oriented **fund selection and ranking system** for quantitative investment analysis.  
-This repository combines **market-data ingestion**, **fund-level feature engineering**, **risk-adjusted performance evaluation**, and a **weighted ranking framework** to produce a ranked list of candidate funds.
+A research-oriented fund selection pipeline for quantitative investment analysis.
 
-> The project is intentionally framed as more than a utility script.  
-> It is designed as a reproducible decision-support pipeline that can be used to study **selection under uncertainty**, **multi-criteria ranking**, **cost-aware portfolio screening**, and **data-driven financial decision making**.
+This project provides a modular workflow for retrieving fund data, engineering fund-level features, evaluating risk-adjusted performance, and ranking candidate funds using a configurable scoring framework.
 
----
+## Overview
 
-## Why this project is valuable for PhD applications
+The repository is designed as a practical fund screening system. It combines market-data ingestion, feature computation, cost-related processing, and weighted ranking to produce a ranked list of candidate funds for further analysis.
 
-This repository supports a strong academic narrative in areas such as:
+The workflow is intended to be transparent and easy to extend. It can be used for:
 
-- **Quantitative finance**
-- **Machine learning for decision systems**
-- **Multi-criteria optimization**
-- **Risk-aware asset selection**
-- **Financial data engineering**
-- **Reproducible empirical research**
+- fund universe screening
+- performance and risk evaluation
+- cost-aware comparison
+- ranking and shortlist generation
+- empirical analysis of selection rules
 
-For a PhD application, the value of this project is not just in the final ranked output. The stronger contribution is that it shows you can:
+## Main Workflow
 
-- define an evaluation problem,
-- build a data pipeline,
-- turn raw market information into measurable signals,
-- combine multiple objectives into a transparent scoring rule,
-- and structure the code so it can be extended into a research benchmark.
+The pipeline typically performs the following steps:
 
----
+1. fetches a fund universe
+2. filters the universe to keep relevant candidates
+3. collects fund overview information
+4. downloads NAV history
+5. computes performance and risk metrics
+6. estimates cost-related quantities
+7. applies a weighted ranking model
+8. exports the ranked result to CSV
 
-## Project overview
-
-The current pipeline does the following:
-
-1. fetches a fund universe,
-2. screens the universe to keep the most relevant candidates,
-3. builds a record for each fund using overview and NAV history,
-4. computes performance and risk metrics,
-5. estimates cost-related quantities,
-6. applies a weighted ranking model,
-7. saves the final ranked table to CSV.
-
-This is a useful research pattern because it transforms a noisy practical problem into a **structured ranking task**.
-
----
-
-## Repository structure
+## Repository Structure
 
 ```text
 fund-selector/
@@ -60,68 +44,51 @@ fund-selector/
 └── scripts/
 ```
 
----
-
-## Core modules
+## Modules
 
 ### `src/data.py`
-Data access and preprocessing utilities.  
-This module uses **Akshare** to retrieve:
+Data access and preprocessing utilities.
 
-- fund ratings / universe data,
-- fund overview data,
-- fund NAV history,
-- and fee tables.
-
-It also includes parsing helpers for codes, percentages, and numeric conversion.
+This module handles:
+- fund universe and rating data
+- fund overview data
+- NAV history retrieval
+- fee-related data
+- parsing helpers for codes, percentages, and numeric values
 
 ### `src/metrics.py`
-Performance and risk metrics, including:
+Performance and risk metrics.
 
-- annualized return,
-- annualized volatility,
-- maximum drawdown,
-- Sharpe ratio,
-- monthly win rate,
-- return conversion utilities,
-- rank normalization.
+Typical utilities include:
+- annualized return
+- annualized volatility
+- maximum drawdown
+- Sharpe ratio
+- monthly win rate
+- return conversion helpers
+- rank normalization
 
 ### `src/platform_cost.py`
-Helpers for reading platform discount / offer information from CSV.
+Utilities for reading and processing platform discount or offer information from CSV files.
 
 ### `src/selector.py`
-The main selection logic:
+Core fund selection logic.
 
-- filters the fund universe,
-- extracts overview information,
-- computes fund-level records,
-- estimates cost proxies,
-- and ranks funds using a weighted score.
+This module is responsible for:
+- universe filtering
+- fund record construction
+- metric aggregation
+- cost estimation
+- weighted ranking
 
 ### `run.py`
-The entry script that connects the full workflow and writes the ranked results to disk.
+Entry point for the full workflow.
 
----
+It connects the data loading, metric computation, selection, ranking, and export steps into a single executable pipeline.
 
-## Methodological idea
+## Scoring Framework
 
-The project is built around **multi-objective fund selection** rather than a single metric.  
-Each candidate fund is evaluated through a combination of:
-
-- **expected historical performance**,
-- **risk-adjusted return**,
-- **drawdown behavior**,
-- **analyst / rating information**,
-- **cost sensitivity**,
-- and **consistency of monthly performance**.
-
-This is academically useful because it reflects how real decision systems work: they must trade off multiple objectives under uncertainty.
-
----
-
-## Scoring framework
-
-The current configuration uses a weighted score with components such as:
+The ranking system combines multiple factors rather than relying on a single metric. The current configuration includes components such as:
 
 - `cagr`
 - `sharpe`
@@ -130,52 +97,38 @@ The current configuration uses a weighted score with components such as:
 - `expense`
 - `consistency`
 
-This kind of formulation is attractive in research because it is:
+The scoring logic is configurable through `config.yaml`, which makes it easy to compare different ranking strategies or adjust the emphasis of each component.
 
-- interpretable,
-- configurable,
-- easy to ablate,
-- and easy to compare against alternative ranking strategies.
+## Data Requirements
 
----
-
-## Data requirements
-
-The project expects internet-accessible fund data via Akshare and may also rely on local CSV inputs.
+The project uses internet-accessible fund data through Akshare and may also rely on local CSV files.
 
 Typical inputs include:
+- a fund universe with ratings and fee-related fields
+- NAV history for each fund
+- platform offer data in CSV format
 
-- a fund universe with ratings and fee-related fields,
-- NAV history for each fund,
-- platform offer data in CSV format.
-
-The configuration file currently points to:
-
+The default configuration references:
 - `data/platform_offers.csv`
 - `outputs/ranked_funds.csv`
 
----
-
 ## Configuration
 
-The main configuration is stored in `config.yaml`.
+The main settings are stored in `config.yaml`.
 
-It currently controls:
+Common configuration items include:
+- minimum history length
+- ranking weights
+- holding period
+- investment amount
+- platform offer CSV path
+- output CSV path
 
-- minimum history length,
-- ranking weights,
-- holding period,
-- investment amount,
-- platform offer CSV path,
-- and output CSV path.
-
-This is a strong design choice for research code because it separates **experiment settings** from **implementation**.
-
----
+Keeping these parameters in a config file makes it easier to run experiments without changing the source code.
 
 ## Installation
 
-Install the dependencies listed in `requirements.txt`.
+Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -194,123 +147,61 @@ The project currently depends on packages such as:
 - `scikit-learn`
 - `tqdm`
 
----
-
 ## Usage
 
-Run the main pipeline from the repository root:
+Run the pipeline from the repository root:
 
 ```bash
 python run.py --config config.yaml
 ```
 
-The script will build fund records, rank the candidates, and save the ranked table to the configured output path.
-
----
+The script will:
+- load the configuration
+- build fund records
+- calculate metrics
+- rank the candidate funds
+- save the output to the configured CSV path
 
 ## Output
 
-The output is a ranked CSV table that can be used for:
+The final output is a ranked CSV table that can be used for:
 
-- further analysis,
-- portfolio construction,
-- comparison with benchmark strategies,
-- or manual fund screening.
+- further analysis
+- shortlist creation
+- portfolio screening
+- benchmark comparison
+- manual review
 
-Typical columns include:
+Typical columns may include:
+- fund code
+- fund name
+- fund type
+- composite score
+- fee proxy fields
+- annualized return
+- Sharpe ratio
+- maximum drawdown
+- monthly win rate
 
-- fund code,
-- fund name,
-- fund type,
-- composite score,
-- fee proxies,
-- annualized return,
-- Sharpe ratio,
-- maximum drawdown,
-- and monthly win rate.
+## Extending the Project
 
----
+The current implementation can be extended in several directions:
 
-## Research framing for PhD applications
+- add backtesting
+- introduce train/validation/test splits over time
+- compare alternative ranking rules
+- incorporate transaction costs
+- test different holding horizons
+- analyze factor exposure
+- add visualization and reporting
+- log experiments for reproducibility
 
-When describing this project in a CV, statement of purpose, or email to a supervisor, the strongest framing is:
+## Notes
 
-> I built a cost-aware, risk-adjusted fund selection pipeline that integrates market data retrieval, feature engineering, and interpretable ranking to support financial decision making.
-
-That sentence works well because it emphasizes:
-
-- **problem formulation**,
-- **method design**,
-- **empirical evaluation**,
-- and **decision relevance**.
-
-A more technical framing could be:
-
-> The project implements a modular, data-driven ranking system for mutual fund screening, using historical NAV series, fee structures, and rank-normalized performance metrics to produce interpretable candidate rankings.
-
----
-
-## Why this is more than a trading script
-
-This repository is a good PhD-level portfolio item because it can grow into a research platform for:
-
-- **ablation studies**  
-  Compare alternative weighting schemes and metric combinations.
-
-- **benchmarking**  
-  Compare against heuristic screening, factor models, or machine-learning rankers.
-
-- **robustness analysis**  
-  Test different holding horizons, market regimes, and history-length thresholds.
-
-- **explainability**  
-  Study which metrics drive the final ranking and how sensitive results are to each term.
-
-- **decision theory**  
-  Reinterpret the ranking as a constrained optimization or utility maximization problem.
-
----
-
-## Possible extensions
-
-To strengthen the project for academic or PhD use, consider adding:
-
-- a backtesting module,
-- train/validation/test splits over time,
-- benchmark strategies,
-- transaction-cost modeling,
-- risk-parity or utility-based ranking,
-- factor exposure analysis,
-- visualization dashboards,
-- experiment logging,
-- and reproducible reports.
-
----
-
-## Suggested wording for academic applications
-
-You can describe the project as:
-
-- “a quantitative fund selection framework”
-- “a cost-aware ranking pipeline for asset screening”
-- “a reproducible empirical finance system”
-- “a multi-criteria decision model for investment selection”
-- “a modular research baseline for data-driven portfolio screening”
-
-These phrases sound significantly stronger than “fund selector,” while still being accurate.
-
----
-
-## Environment
-
-Refer to `requirements.txt` for the exact package list.  
-The project may also require:
-
-- internet access for Akshare data retrieval,
-- a valid local data directory,
-- and CSV inputs for platform offer information.
-
----
+- The data source depends on Akshare and external market-data availability.
+- Some fields may be unavailable for certain funds or time periods.
+- Local CSV inputs should follow the format expected by the code in `src/platform_cost.py`.
+- The output directory should exist or be created before running the pipeline.
 
 ## License
 
